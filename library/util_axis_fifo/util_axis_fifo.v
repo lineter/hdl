@@ -173,19 +173,38 @@ end else begin
     // When the clocks are asynchronous instantiate a block RAM
     // regardless of the requested size to make sure we threat the
     // clock crossing correctly
-    ad_mem #(
-      .DATA_WIDTH (DATA_WIDTH),
-      .ADDRESS_WIDTH (ADDRESS_WIDTH))
-    i_mem (
-      .clka(s_axis_aclk),
-      .wea(s_mem_write),
-      .addra(s_axis_waddr),
-      .dina(s_axis_data),
-      .clkb(m_axis_aclk),
-      .reb(m_mem_read),
-      .addrb(m_axis_raddr),
-      .doutb(m_axis_data)
-    );
+    if (WR_DATA_WIDTH == RD_DATA_WIDTH) begin /* Symmetric WRITE/READ interface */
+      ad_mem #(
+        .DATA_WIDTH (WR_DATA_WIDTH),
+        .ADDRESS_WIDTH (WR_ADDRESS_WIDTH))
+      i_mem (
+        .clka(s_axis_aclk),
+        .wea(s_mem_write),
+        .addra(s_axis_waddr),
+        .dina(s_axis_data),
+        .clkb(m_axis_aclk),
+        .reb(m_mem_read),
+        .addrb(m_axis_raddr),
+        .doutb(m_axis_data)
+      );
+    end else begin /* Asymmetric aspect ratio */
+      ad_mem_asym #(
+        .A_DATA_WIDTH (WR_DATA_WIDTH),
+        .A_ADDRESS_WIDTH (WR_ADDRESS_WIDTH),
+        .B_DATA_WIDTH (RD_DATA_WIDTH),
+        .B_ADDRESS_WIDTH (RD_ADDRESS_WIDTH))
+      i_mem_asym (
+        .clka(s_axis_aclk),
+        .wea(s_mem_write),
+        .addra(s_axis_waddr),
+        .dina(s_axis_data),
+        .clkb(m_axis_aclk),
+        .reb (m_mem_read),
+        .reb(m_mem_read),
+        .addrb(m_axis_raddr),
+        .doutb(m_axis_data)
+      );
+    end
 
     assign _m_axis_ready = ~valid || m_axis_ready;
     assign m_axis_valid = valid;
@@ -239,6 +258,23 @@ end else begin
       assign m_axis_valid = _m_axis_valid;
       assign m_axis_data = ram[m_axis_raddr];
 
+      end
+    end else begin /* Asymmetric aspect ratio */
+      ad_mem_asym #(
+        .A_DATA_WIDTH (WR_DATA_WIDTH),
+        .A_ADDRESS_WIDTH (WR_ADDRESS_WIDTH),
+        .B_DATA_WIDTH (RD_DATA_WIDTH),
+        .B_ADDRESS_WIDTH (RD_ADDRESS_WIDTH))
+      i_mem_asym (
+        .clka(s_axis_aclk),
+        .wea(s_mem_write),
+        .addra(s_axis_waddr),
+        .dina(s_axis_data),
+        .clkb(m_axis_aclk),
+        .reb(m_mem_read),
+        .addrb(m_axis_raddr),
+        .doutb(m_axis_data)
+      );
     end
 
   end
