@@ -42,7 +42,7 @@ module util_axis_fifo #(
   parameter RD_DATA_WIDTH = 64,
   parameter RD_ADDRESS_WIDTH = 5,
   parameter ASYNC_CLK = 1,
-  parameter S_AXIS_REGISTERED = 1
+  parameter M_AXIS_REGISTERED = 1
 ) (
   input m_axis_aclk,
   input m_axis_aresetn,
@@ -176,7 +176,7 @@ end else begin /* WR_ADDRESS_WIDTH != 0 - this is a real FIFO implementation */
 
   if (ASYNC_CLK == 1) begin /* Asynchronous WRITE/READ clocks */
 
-    // The assumption is that in this mode the S_AXIS_REGISTERED is 1
+    // The assumption is that in this mode the M_AXIS_REGISTERED is 1
     // When the clocks are asynchronous instantiate a block RAM
     // regardless of the requested size to make sure we threat the
     // clock crossing correctly
@@ -231,7 +231,7 @@ end else begin /* WR_ADDRESS_WIDTH != 0 - this is a real FIFO implementation */
           ram[s_axis_waddr] <= s_axis_data;
       end
 
-      if (S_AXIS_REGISTERED == 1) begin
+      if (M_AXIS_REGISTERED == 1) begin
 
         reg [WR_DATA_WIDTH-1:0] data;
 
