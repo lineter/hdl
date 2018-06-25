@@ -39,13 +39,4 @@ adi_add_bus_clock "s_axis_aclk" "s_axis" "m_axis_aresetn"
 
 ## TODO: Validate RD_ADDRESS_WIDTH
 
-## add parameters to GUI
-
-ipgui::add_param -name {WR_DATA_WIDTH} -component [ipx::current_core] -display_name {Write Data Width} -show_label {true} -show_range {true} -widget {}
-ipgui::add_param -name {RD_DATA_WIDTH} -component [ipx::current_core] -display_name {Read Data Width} -show_label {true} -show_range {true} -widget {}
-ipgui::add_param -name {WR_ADDRESS_WIDTH} -component [ipx::current_core] -display_name {Address width of the write side. The actual depth of the FIFO} -show_label {true} -show_range {true} -widget {}
-ipgui::add_param -name {RD_ADDRESS_WIDTH} -component [ipx::current_core] -display_name {Address width of the read side.} -show_label {true} -show_range {true} -widget {}
-ipgui::add_param -name {ASYNC_CLK} -component [ipx::current_core] -display_name {Asynchronous write/read interface} -show_label {true} -show_range {true} -widget {}
-ipgui::add_param -name {S_AXIS_REGISTERED} -component [ipx::current_core] -display_name {Registered data output on AXIS slave} -show_label {true} -show_range {true} -widget {}
-
 ipx::save_core [ipx::current_core]
