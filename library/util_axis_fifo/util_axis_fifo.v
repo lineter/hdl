@@ -153,7 +153,7 @@ end else begin /* WR_ADDRESS_WIDTH != 0 - this is a real FIFO implementation */
   assign s_mem_write = s_axis_ready & s_axis_valid;
   assign m_mem_read = (~valid || m_axis_ready) && _m_axis_valid;
 
-  address_generator #(
+  util_axis_fifo_address_generator #(
     .ASYNC_CLK(ASYNC_CLK),
     .WR_ADDRESS_WIDTH(WR_ADDRESS_WIDTH),
     .RD_ADDRESS_WIDTH(RD_ADDRESS_WIDTH)

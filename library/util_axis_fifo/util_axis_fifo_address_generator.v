@@ -34,7 +34,7 @@
 // ***************************************************************************
 `timescale 1ns/1ps
 
-module address_generator #(
+module util_axis_fifo_address_generator #(
   parameter ASYNC_CLK = 0,                // single or double clocked FIFO
   parameter WR_ADDRESS_WIDTH = 4,         // write address width, effective FIFO depth
   parameter RD_ADDRESS_WIDTH = 4          // read address width, must comply with write side

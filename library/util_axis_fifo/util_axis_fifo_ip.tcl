@@ -4,7 +4,7 @@ source $ad_hdl_dir/library/scripts/adi_ip_xilinx.tcl
 
 adi_ip_create util_axis_fifo
 adi_ip_files util_axis_fifo [list \
-	"address_generator.v" \
+	"util_axis_fifo_address_generator.v" \
 	"../common/ad_mem.v" \
 	"../common/ad_mem_asym.v" \
 	"util_axis_fifo.v" \
