@@ -158,7 +158,7 @@ ad_connect  sys_concat_intc_0/In0 GND
 # ADRV9009 Specific Connections
 # TX parameters
 
-set TX_NUM_OF_LANES $ad_project_params(JESD_TX_L) ; # L
+set TX_NUM_OF_LANES $ad_project_params(JESD_TX_L); # L
 set TX_NUM_OF_CONVERTERS $ad_project_params(JESD_TX_M) ; # M
 set TX_SAMPLES_PER_FRAME 1 ; # S
 set TX_SAMPLE_WIDTH 16     ; # N/NP
