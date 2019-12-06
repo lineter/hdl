@@ -32,40 +32,34 @@
 //
 // ***************************************************************************
 // ***************************************************************************
-`timescale 1ns/1ps
 
 `timescale 1ns/100ps
 
 module util_axis_fifo #(
-  parameter WR_DATA_WIDTH = 64,
-  parameter WR_ADDRESS_WIDTH = 5,
-  parameter RD_DATA_WIDTH = 64,
-  parameter RD_ADDRESS_WIDTH = 5,
+  parameter DATA_WIDTH = 64,
   parameter ASYNC_CLK = 1,
-  parameter M_AXIS_REGISTERED = 1
+  parameter ADDRESS_WIDTH = 4,
+  parameter S_AXIS_REGISTERED = 1
 ) (
   input m_axis_aclk,
   input m_axis_aresetn,
   input m_axis_ready,
   output m_axis_valid,
-  output [RD_DATA_WIDTH-1:0] m_axis_data,
-  output [RD_ADDRESS_WIDTH:0] m_axis_level,
-  output m_axis_empty,
+  output [DATA_WIDTH-1:0] m_axis_data,
+  output [ADDRESS_WIDTH:0] m_axis_level,
 
   input s_axis_aclk,
   input s_axis_aresetn,
   output s_axis_ready,
   input s_axis_valid,
-  input [WR_DATA_WIDTH-1:0] s_axis_data,
-  output [WR_ADDRESS_WIDTH:0] s_axis_room,
-  output s_axis_full
+  input [DATA_WIDTH-1:0] s_axis_data,
+  output s_axis_empty,
+  output [ADDRESS_WIDTH:0] s_axis_room
 );
 
-generate if ((WR_ADDRESS_WIDTH == 0) && (WR_ADDRESS_WIDTH == RD_ADDRESS_WIDTH)) begin /* it's not a real FIFO, just a 2 stage CDC */
+generate if (ADDRESS_WIDTH == 0) begin
 
-  // Note: In this mode, the write and read interface must have a symmetric
-  // aspect ratio.
-  reg [WR_DATA_WIDTH-1:0] cdc_sync_fifo_ram;
+  reg [DATA_WIDTH-1:0] cdc_sync_fifo_ram;
   reg s_axis_waddr = 1'b0;
   reg m_axis_raddr = 1'b0;
 
@@ -93,10 +87,9 @@ generate if ((WR_ADDRESS_WIDTH == 0) && (WR_ADDRESS_WIDTH == RD_ADDRESS_WIDTH)) 
   );
 
   assign m_axis_valid = m_axis_raddr != m_axis_waddr;
-  assign m_axis_empty = ~m_axis_valid;
   assign m_axis_level = m_axis_valid;
   assign s_axis_ready = s_axis_raddr == s_axis_waddr;
-  assign s_axis_full = ~s_axis_ready;
+  assign s_axis_empty = s_axis_ready;
   assign s_axis_room = s_axis_ready;
 
   always @(posedge s_axis_aclk) begin
@@ -125,20 +118,21 @@ generate if ((WR_ADDRESS_WIDTH == 0) && (WR_ADDRESS_WIDTH == RD_ADDRESS_WIDTH)) 
 
   assign m_axis_data = cdc_sync_fifo_ram;
 
-end else begin /* WR_ADDRESS_WIDTH != 0 - this is a real FIFO implementation */
+end else begin
 
-  wire [WR_ADDRESS_WIDTH-1:0] s_axis_waddr;
-  wire [RD_ADDRESS_WIDTH-1:0] m_axis_raddr;
+  reg [DATA_WIDTH-1:0] ram[0:2**ADDRESS_WIDTH-1];
+
+  wire [ADDRESS_WIDTH-1:0] s_axis_waddr;
+  wire [ADDRESS_WIDTH-1:0] m_axis_raddr;
   wire _m_axis_ready;
   wire _m_axis_valid;
-  wire [RD_ADDRESS_WIDTH:0] _m_axis_level;
+  wire [ADDRESS_WIDTH:0] _m_axis_level;
 
   wire s_mem_write;
   wire m_mem_read;
 
   reg valid;
 
-  /* Control for first falls through */
   always @(posedge m_axis_aclk) begin
     if (m_axis_aresetn == 1'b0) begin
       valid <= 1'b0;
@@ -153,64 +147,45 @@ end else begin /* WR_ADDRESS_WIDTH != 0 - this is a real FIFO implementation */
   assign s_mem_write = s_axis_ready & s_axis_valid;
   assign m_mem_read = (~valid || m_axis_ready) && _m_axis_valid;
 
-  util_axis_fifo_address_generator #(
-    .ASYNC_CLK(ASYNC_CLK),
-    .WR_ADDRESS_WIDTH(WR_ADDRESS_WIDTH),
-    .RD_ADDRESS_WIDTH(RD_ADDRESS_WIDTH)
-  ) i_address_gray (
-    .m_axis_aclk(m_axis_aclk),
-    .m_axis_aresetn(m_axis_aresetn),
-    .m_axis_ready(_m_axis_ready),
-    .m_axis_valid(_m_axis_valid),
-    .m_axis_raddr(m_axis_raddr),
-    .m_axis_level(m_axis_level),
-    .m_axis_empty(m_axis_empty),
-    .s_axis_aclk(s_axis_aclk),
-    .s_axis_aresetn(s_axis_aresetn),
-    .s_axis_ready(s_axis_ready),
-    .s_axis_valid(s_axis_valid),
-    .s_axis_full(s_axis_full),
-    .s_axis_waddr(s_axis_waddr),
-    .s_axis_room(s_axis_room)
-  );
+  if (ASYNC_CLK == 1) begin
 
-  if (ASYNC_CLK == 1) begin /* Asynchronous WRITE/READ clocks */
+    // The assumption is that in this mode the S_AXIS_REGISTERED is 1
 
-    // The assumption is that in this mode the M_AXIS_REGISTERED is 1
+    fifo_address_gray_pipelined #(
+      .ADDRESS_WIDTH(ADDRESS_WIDTH)
+    ) i_address_gray (
+      .m_axis_aclk(m_axis_aclk),
+      .m_axis_aresetn(m_axis_aresetn),
+      .m_axis_ready(_m_axis_ready),
+      .m_axis_valid(_m_axis_valid),
+      .m_axis_raddr(m_axis_raddr),
+      .m_axis_level(_m_axis_level),
+
+      .s_axis_aclk(s_axis_aclk),
+      .s_axis_aresetn(s_axis_aresetn),
+      .s_axis_ready(s_axis_ready),
+      .s_axis_valid(s_axis_valid),
+      .s_axis_empty(s_axis_empty),
+      .s_axis_waddr(s_axis_waddr),
+      .s_axis_room(s_axis_room)
+    );
+
     // When the clocks are asynchronous instantiate a block RAM
     // regardless of the requested size to make sure we threat the
     // clock crossing correctly
-    if (WR_DATA_WIDTH == RD_DATA_WIDTH) begin /* Symmetric WRITE/READ interface */
-      ad_mem #(
-        .DATA_WIDTH (WR_DATA_WIDTH),
-        .ADDRESS_WIDTH (WR_ADDRESS_WIDTH))
-      i_mem (
-        .clka(s_axis_aclk),
-        .wea(s_mem_write),
-        .addra(s_axis_waddr),
-        .dina(s_axis_data),
-        .clkb(m_axis_aclk),
-        .reb(m_mem_read),
-        .addrb(m_axis_raddr),
-        .doutb(m_axis_data)
-      );
-    end else begin /* Asymmetric aspect ratio */
-      ad_mem_asym #(
-        .A_DATA_WIDTH (WR_DATA_WIDTH),
-        .A_ADDRESS_WIDTH (WR_ADDRESS_WIDTH),
-        .B_DATA_WIDTH (RD_DATA_WIDTH),
-        .B_ADDRESS_WIDTH (RD_ADDRESS_WIDTH))
-      i_mem_asym (
-        .clka(s_axis_aclk),
-        .wea(s_mem_write),
-        .addra(s_axis_waddr),
-        .dina(s_axis_data),
-        .clkb(m_axis_aclk),
-        .reb (m_mem_read),
-        .addrb(m_axis_raddr),
-        .doutb(m_axis_data)
-      );
-    end
+    ad_mem #(
+      .DATA_WIDTH (DATA_WIDTH),
+      .ADDRESS_WIDTH (ADDRESS_WIDTH))
+    i_mem (
+      .clka(s_axis_aclk),
+      .wea(s_mem_write),
+      .addra(s_axis_waddr),
+      .dina(s_axis_data),
+      .clkb(m_axis_aclk),
+      .reb(m_mem_read),
+      .addrb(m_axis_raddr),
+      .doutb(m_axis_data)
+    );
 
     assign _m_axis_ready = ~valid || m_axis_ready;
     assign m_axis_valid = valid;
@@ -219,61 +194,55 @@ end else begin /* WR_ADDRESS_WIDTH != 0 - this is a real FIFO implementation */
     // the actual FIFO level plus the available data, which sits on the bus
     assign m_axis_level =  (m_axis_valid) ? _m_axis_level + 1'b1 : _m_axis_level;
 
-  end else begin /* Synchronous WRITE/READ clocks */
+  end else begin
 
-    reg [WR_DATA_WIDTH-1:0] ram[0:2**WR_ADDRESS_WIDTH-1];
+    fifo_address_sync #(
+      .ADDRESS_WIDTH(ADDRESS_WIDTH)
+    ) i_address_sync (
+      .clk(m_axis_aclk),
+      .resetn(m_axis_aresetn),
+      .m_axis_ready(_m_axis_ready),
+      .m_axis_valid(_m_axis_valid),
+      .m_axis_raddr(m_axis_raddr),
+      .m_axis_level(m_axis_level),
+
+      .s_axis_ready(s_axis_ready),
+      .s_axis_valid(s_axis_valid),
+      .s_axis_empty(s_axis_empty),
+      .s_axis_waddr(s_axis_waddr),
+      .s_axis_room(s_axis_room)
+    );
 
     // When the clocks are synchronous use behavioral modeling for the SDP RAM
     // Let the synthesizer decide what to infer (distributed or block RAM)
-    if (WR_DATA_WIDTH == RD_DATA_WIDTH) begin /* Symmetric WRITE/READ interface */
-      always @(posedge s_axis_aclk) begin
-        if (s_mem_write)
-          ram[s_axis_waddr] <= s_axis_data;
+    always @(posedge s_axis_aclk) begin
+      if (s_mem_write)
+        ram[s_axis_waddr] <= s_axis_data;
+    end
+
+    if (S_AXIS_REGISTERED == 1) begin
+
+      reg [DATA_WIDTH-1:0] data;
+
+      always @(posedge m_axis_aclk) begin
+        if (m_mem_read)
+          data <= ram[m_axis_raddr];
       end
-
-      if (M_AXIS_REGISTERED == 1) begin
-
-        reg [WR_DATA_WIDTH-1:0] data;
-
-        always @(posedge m_axis_aclk) begin
-          if (m_mem_read)
-            data <= ram[m_axis_raddr];
-        end
-
-        assign _m_axis_ready = ~valid || m_axis_ready;
-        assign m_axis_data = data;
-        assign m_axis_valid = valid;
-
-      end else begin
-
-        assign _m_axis_ready = m_axis_ready;
-        assign m_axis_valid = _m_axis_valid;
-        assign m_axis_data = ram[m_axis_raddr];
-
-      end
-    end else begin /* Asymmetric aspect ratio */
-      ad_mem_asym #(
-        .A_DATA_WIDTH (WR_DATA_WIDTH),
-        .A_ADDRESS_WIDTH (WR_ADDRESS_WIDTH),
-        .B_DATA_WIDTH (RD_DATA_WIDTH),
-        .B_ADDRESS_WIDTH (RD_ADDRESS_WIDTH))
-      i_mem_asym (
-        .clka(s_axis_aclk),
-        .wea(s_mem_write),
-        .addra(s_axis_waddr),
-        .dina(s_axis_data),
-        .clkb(m_axis_aclk),
-        .reb(m_mem_read),
-        .addrb(m_axis_raddr),
-        .doutb(m_axis_data)
-      );
 
       assign _m_axis_ready = ~valid || m_axis_ready;
+      assign m_axis_data = data;
       assign m_axis_valid = valid;
 
+    end else begin
+
+      assign _m_axis_ready = m_axis_ready;
+      assign m_axis_valid = _m_axis_valid;
+      assign m_axis_data = ram[m_axis_raddr];
+
     end
+
   end
-end
-endgenerate
+
+end endgenerate
 
 endmodule

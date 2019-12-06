@@ -2,13 +2,11 @@
 source $ad_hdl_dir/library/jesd204/scripts/jesd204.tcl
 source $ad_hdl_dir/projects/common/xilinx/data_offload_bd.tcl
 
-set adc_offload_name axi_ad9680_offload
 set adc_offload_type 0                      ; ## BRAM
 set adc_offload_size 512000                 ; ## 512 kbyte
 set adc_offload_src_width 128
 set adc_offload_dst_width 64
 
-set dac_offload_name axi_ad9144_offload
 set dac_offload_type 0                      ; ## BRAM
 set dac_offload_size 512000                 ; ## 512 kbyte
 set dac_offload_src_dwidth 128
@@ -47,7 +45,9 @@ ad_ip_instance axi_dmac axi_ad9144_dma [list \
   DMA_DATA_WIDTH_DEST 128 \
 ]
 
-ad_data_offload_create $dac_offload_name \
+create_bd_port -dir I dac_sync
+
+ad_data_offload_create axi_ad9144_offload \
                        1 \
                        $dac_offload_type \
                        $dac_offload_size \
@@ -55,8 +55,9 @@ ad_data_offload_create $dac_offload_name \
                        $dac_offload_dst_dwidth
 
 # synchronization interface
-ad_connect axi_ad9144_offload/init_req GND
-ad_connect axi_ad9144_offload/sync_ext GND
+# TODO: this should come from an independent init_req generator; maybe a GPIO -- current solution is temporary
+ad_connect axi_ad9144_offload/init_req axi_ad9144_dma/m_axis_xfer_req
+ad_connect axi_ad9144_offload/sync_ext dac_sync
 
 # adc peripherals
 
@@ -90,6 +91,8 @@ ad_ip_instance axi_dmac axi_ad9680_dma [list \
   DMA_DATA_WIDTH_DEST 64 \
 ]
 
+create_bd_port -dir I adc_sync
+
 ad_data_offload_create axi_ad9680_offload \
                        0 \
                        $adc_offload_type \
@@ -98,8 +101,9 @@ ad_data_offload_create axi_ad9680_offload \
                        $adc_offload_dst_width
 
 # synchronization interface
-ad_connect axi_ad9680_offload/init_req GND
-ad_connect axi_ad9680_offload/sync_ext GND
+# TODO: this should come from an independent init_req generator; maybe a GPIO -- current solution is temporary
+ad_connect axi_ad9680_offload/init_req axi_ad9680_dma/s_axis_xfer_req
+ad_connect axi_ad9680_offload/sync_ext adc_sync
 
 # shared transceiver core
 

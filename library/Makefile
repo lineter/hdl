@@ -89,6 +89,7 @@ clean:
 	$(MAKE) -C sysid_rom clean
 	$(MAKE) -C util_adcfifo clean
 	$(MAKE) -C util_axis_fifo clean
+	$(MAKE) -C util_axis_fifo_asym clean
 	$(MAKE) -C util_axis_resize clean
 	$(MAKE) -C util_axis_upscale clean
 	$(MAKE) -C util_bsplit clean
