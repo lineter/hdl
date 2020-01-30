@@ -163,7 +163,7 @@ end else begin /* WR_ADDRESS_WIDTH != 0 - this is a real FIFO implementation */
     .m_axis_ready(_m_axis_ready),
     .m_axis_valid(_m_axis_valid),
     .m_axis_raddr(m_axis_raddr),
-    .m_axis_level(m_axis_level),
+    .m_axis_level(_m_axis_level),
     .m_axis_empty(m_axis_empty),
     .s_axis_aclk(s_axis_aclk),
     .s_axis_aresetn(s_axis_aresetn),
